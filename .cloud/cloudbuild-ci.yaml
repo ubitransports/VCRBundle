@@ -1,0 +1,45 @@
+steps:
+  - id: 'github-auth'
+    name: 'bash:latest'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - 'echo "{\"github-oauth\":{\"github.com\":\"$$GITHUB_ACCESS_TOKEN\"}}" > auth.json'
+      - 'echo \"//npm.pkg.github.com/:$$GITHUB_ACCESS_TOKEN\" > .npmrc'
+    secretEnv:
+      - "GITHUB_ACCESS_TOKEN"
+
+  - id: 'composer-install'
+    name: europe-west1-docker.pkg.dev/ubitransport-tools/services/nginx-php8.3-dev-server
+    entrypoint: sh
+    args:
+      - '-c'
+      - |-
+        composer install
+
+  - id: 'fixer'
+    name: europe-west1-docker.pkg.dev/ubitransport-tools/services/nginx-php8.3-dev-server
+    waitFor: ['composer-install']
+    entrypoint: sh
+    args:
+      - '-c'
+      - |-
+        php-cs-fixer fix --config=/root/.composer/vendor/ubitransport/coding-standards/config/.php_cs_microservice.dist --verbose --dry-run --diff
+
+  - id: 'phpstan'
+    name: europe-west1-docker.pkg.dev/ubitransport-tools/services/nginx-php8.3-dev-server
+    waitFor: ['fixer']
+    entrypoint: sh
+    args:
+      - '-c'
+      - |-
+        phpstan analyse --configuration='./phpstan.neon.dist'
+timeout: 3200s
+options:
+  pool:
+    name: projects/ubitransport-tools/locations/europe-west1/workerPools/pool-01
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/github-access-token/versions/latest
+      env: 'GITHUB_ACCESS_TOKEN'

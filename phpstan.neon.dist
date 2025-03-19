@@ -1,0 +1,9 @@
+includes:
+    - phpstan-baseline.neon
+parameters:
+    level: 9
+    paths:
+        - src
+        - tests
+    ignoreErrors:
+        - '#Constant .*MAPPED_CUSTOM_UUID_(POST|PRE)FIX is unused.#'
